@@ -1,0 +1,67 @@
+
+
+
+placeCellFiringData = tableOutput{:, forward_place_cells_99ci};
+
+locationData = tableOutput{:,[101, 99, 100]};
+
+
+% Assuming 'placeCellFiringData' is a 11858x18 double and 'locationData' is a Nx3 double
+%% plot 2d heatmaps for each neuron
+% Define bin edges for x and y
+x_bin_edges = linspace(min(locationData(:, 2)), max(locationData(:, 2)), 50);
+y_bin_edges = linspace(min(locationData(:, 3)), max(locationData(:, 3)), 50);
+
+% Iterate through each neuron column in placeCellFiringData
+for neuronIndex = 1:size(placeCellFiringData, 2)
+    % Extract firing data for the current neuron
+    neuronActivity = placeCellFiringData(:, neuronIndex);
+    
+    % Filter location data based on active neurons
+    activeLocations = locationData(logical(neuronActivity), 2:3);
+    
+    % Calculate 2D histogram for (x, y) coordinates
+    histogram_2d = histcounts2(activeLocations(:, 1), activeLocations(:, 2), x_bin_edges, y_bin_edges);
+    
+    % Calculate the probability of the neuron being active at each (x, y) coordinate
+    probability_matrix = histogram_2d / sum(histogram_2d(:));
+    
+    % Create a heatmap for the current neuron
+    figure;
+    imagesc(x_bin_edges, y_bin_edges, probability_matrix');
+    colormap('hot');
+    colorbar;
+    
+    % Add labels and title
+    xlabel('X Coordinate');
+    ylabel('Y Coordinate');
+    title(['2D Heatmap for Neuron ' num2str(neuronIndex)]);
+end
+
+%% plot 1d heatmaps for each neuron, just look at x coordinates 
+
+% Iterate through each neuron column in placeCellFiringData
+for neuronIndex = 1:size(placeCellFiringData, 2)
+    % Extract firing data for the current neuron
+    neuronActivity = placeCellFiringData(:, neuronIndex);
+    
+    % Filter location data based on active neurons
+    activeLocations = locationData(logical(neuronActivity), 2:3);
+    
+    % Calculate 2D histogram for (x, y) coordinates
+    histogram_2d = histcounts2(activeLocations(:, 1), activeLocations(:, 2), x_bin_edges, y_bin_edges);
+    
+    % Calculate the probability of the neuron being active at each (x, y) coordinate
+    probability_matrix = histogram_2d / sum(histogram_2d(:));
+    
+    % Create a heatmap for the current neuron
+    figure;
+    imagesc(x_bin_edges, y_bin_edges, probability_matrix');
+    colormap('hot');
+    colorbar;
+    
+    % Add labels and title
+    xlabel('X Coordinate');
+    ylabel('Y Coordinate');
+    title(['2D Heatmap for Neuron ' num2str(neuronIndex)]);
+end
