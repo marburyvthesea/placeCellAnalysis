@@ -126,12 +126,11 @@ end
 %% shuffle calcium traces and compute signal peaks 
 
 %shuffle 
-numShuffles = 100 ; 
-cellTracesArray = table2array(cellTraces);
-[numFrames, numNeurons] = size(cellTracesArray);
-allPeaksShuffled = zeros(numFrames,numNeurons,numShuffles); 
-for shuffle = 1:numShuffles
-    disp(shuffle); 
+numshuffles = 10 ; 
+allPeaksShuffled = zeros()
+for shuffle = 1:numsuffles; 
+    cellTracesArray = table2array(cellTraces); 
+    [numFrames, numNeurons] = size(cellTracesArray);
     % Initialize an array to store the shuffled data
     shuffledCellTraces = cellTracesArray;
     % Loop through each neuron (column) and shuffle the frames
@@ -142,9 +141,8 @@ for shuffle = 1:numShuffles
         shuffledCellTraces(:, neuron) = cellTracesArray(shuffleIndices, neuron);
     end
     %
-    [signalPeaksThisShuffle] = computeSignalPeaks(shuffledCellTraces, 'doMovAvg', 0, 'reportMidpoint', 1, 'numStdsForThresh', 2.5);
-    allPeaksShuffled(:,:,shuffle)=signalPeaksThisShuffle; 
-end 
+    [signalPeaks] = computeSignalPeaks(shuffledCellTraces, 'doMovAvg', 0, 'reportMidpoint', 1, 'numStdsForThresh', 2.5);
+
 
 %% calculate mutual information per cell
 
