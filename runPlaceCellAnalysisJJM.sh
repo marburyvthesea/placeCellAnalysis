@@ -2,8 +2,8 @@
 #SBATCH -A p30771
 #SBATCH -p short
 #SBATCH -t 04:00:00
-#SBATCH -o ./logfiles/normcorrMatlab.%x-%j.out # STDOUT
-#SBATCH --job-name="slurm_matlab_normcore"
+#SBATCH -o ./logfiles/placeCellAnalysis.%x-%j.out # STDOUT
+#SBATCH --job-name="placeCellAnalysis"
 #SBATCH --mem-per-cpu=5200M
 #SBATCH -N 1
 #SBATCH -n 16
@@ -29,6 +29,6 @@ module load matlab/r2023b
 cd /home/jma819/placeCellAnalysis
 #run analysis 
 
-matlab -nosplash -nodesktop -r "addpath(genpath('/home/jma819/placeCellAnalysis'));maxNumCompThreads(str2num(getenv('SLURM_NPROCS')));folder='$INPUT_pathToAlignedData';run('placeCellAnalysisJJMquest.m');exit;"
+matlab -nosplash -nodesktop -r "addpath(genpath('/home/jma819/placeCellAnalysis'));maxNumCompThreads(str2num(getenv('SLURM_NPROCS')));alignedFile='$INPUT_pathToAlignedData';run('placeCellAnalysisJJMquest.m');exit;"
 
 echo 'finished analysis'

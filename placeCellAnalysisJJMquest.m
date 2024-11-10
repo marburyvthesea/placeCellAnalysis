@@ -5,10 +5,10 @@
 %import path to .csv file to load dataTable
 disp('loading');
 disp(alignedFile);
-dataTable = readtable(csvFilePath, 'VariableNamesLine', 1);
+dataTable = readtable(alignedFile, 'VariableNamesLine', 1);
 dataTable(1, :) = [];
 
-[filePath, fName, ext] = fileparts(csvFilePath);
+[filePath, fName, ext] = fileparts(alignedFile);
 fileName = strcat(fName, ext); 
 
 %%
@@ -18,7 +18,7 @@ timeStrings = frameTimes; % Extract the time strings from the table
 timeDurations = duration(extractAfter(timeStrings(:,1).Var1, ' days '), 'Format', 'hh:mm:ss.SSSSSS');
 pos = seconds(timeDurations);
 
-cellTraces= dataTable(:,2:189);
+cellTraces = dataTable(:, 2:end-7);
 X_coor= dataTable.X_coor;
 Y_coor= dataTable.Y_coor;
 
