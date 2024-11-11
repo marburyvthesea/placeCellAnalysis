@@ -156,14 +156,17 @@ MI_perCell = MI_perCellperBin * probabilityOfMouseOccupyingBin';
 end
 
 h5FilePath = strcat(filePath, result{1}, '_MI_per_cell_actual.h5');  % Set the HDF5 file path
-datasetName = '/MI_perCell';  % Define the dataset name
+
 if isfile(h5FilePath)
     delete(h5FilePath);
 end
-h5create(h5FilePath, datasetName, size(MI_perCell), 'Datatype', 'double');
-h5create(h5FilePath, datasetName, size(MI_perCellperBin), 'Datatype', 'double');
-h5write(h5FilePath, datasetName, MI_perCell);
-h5write(h5FilePath, datasetName, MI_perCellperBin);
+h5create(h5FilePath, '/MI_perCellActual', size(MI_perCell), 'Datatype', 'double');
+h5create(h5FilePath, '/MI_perCellperBin', size(MI_perCellperBin), 'Datatype', 'double');
+h5create(h5FilePath, '/binOccupancyProbability', size(probabilityOfMouseOccupyingBin), 'Datatype', 'double');
+
+h5write(h5FilePath, '/MI_perCellActual', MI_perCell);
+h5write(h5FilePath, '/MI_perCellperBin', MI_perCellperBin);
+h5write(h5FilePath, '/MI_perCellperBin', probabilityOfMouseOccupyingBin);
 
 %% shuffle calcium traces and compute signal peaks in chunks to avoid filling up RAM
 
