@@ -166,7 +166,7 @@ h5create(h5FilePath, '/binOccupancyProbability', size(probabilityOfMouseOccupyin
 
 h5write(h5FilePath, '/MI_perCellActual', MI_perCell);
 h5write(h5FilePath, '/MI_perCellperBin', MI_perCellperBin);
-h5write(h5FilePath, '/MI_perCellperBin', probabilityOfMouseOccupyingBin);
+h5write(h5FilePath, '/binOccupancyProbability', probabilityOfMouseOccupyingBin);
 
 %% shuffle calcium traces and compute signal peaks in chunks to avoid filling up RAM
 
