@@ -1,12 +1,12 @@
 %%load csv file with peaks and tracking data
-%run("loadSortedSession.m")
+run("loadSortedSession.m")
 
 %%to run on quest
 %import path to .csv file to load dataTable
-disp('loading');
-disp(alignedFile);
-dataTable = readtable(csvFilePath, 'VariableNamesLine', 1);
-dataTable(1, :) = [];
+%disp('loading');
+%disp(alignedFile);
+%dataTable = readtable(csvFilePath, 'VariableNamesLine', 1);
+%dataTable(1, :) = [];
 
 [filePath, fName, ext] = fileparts(csvFilePath);
 fileName = strcat(fName, ext); 
@@ -18,7 +18,7 @@ timeStrings = frameTimes; % Extract the time strings from the table
 timeDurations = duration(extractAfter(timeStrings(:,1).Var1, ' days '), 'Format', 'hh:mm:ss.SSSSSS');
 pos = seconds(timeDurations);
 
-cellTraces= dataTable(:,2:189);
+cellTraces= dataTable(:, 2:end-7);
 X_coor= dataTable.X_coor;
 Y_coor= dataTable.Y_coor;
 
@@ -116,43 +116,28 @@ h5write(h5FilePath, datasetName, topBins);
 
 % overall firing probability for each neuron 
 neuronFiringProbability = mean(signalPeaks, 1);
-
 % probability of calcium event over occupany probability
 expanded_probability_per_bin = repmat(probabilityOfMouseOccupyingBin, size(cellFiringProbabilityPerBin, 1), 1);
 p_event_over_p_occupancy = cellFiringProbabilityPerBin ./ expanded_probability_per_bin;
-
 % sum of event probabilities in each bin
 MI_perCellperBin = zeros(size(cellFiringProbabilityPerBin,1), size(cellFiringProbabilityPerBin,2));
 MI_perCell = zeros(1, size(cellFiringProbabilityPerBin,1));
-
 % for each cell
 size(cellFiringProbabilityPerBin,1)
 for i = 1:size(cellFiringProbabilityPerBin,1)
-
-    MI_perbin = zeros(1, size(probabilityOfMouseOccupyingBin, 2));
-    
+    MI_perbin = zeros(1, size(probabilityOfMouseOccupyingBin, 2));    
     %for each bin  
     for j = 1:size(probabilityOfMouseOccupyingBin, 2)
-
-        %%TO DO: from here 
-
         % conditional p of event given in bin is = (prob in bin + prob of event) / (prob in bin)
-
         % (conditional probability of observing a calcium events given mouse is in bin) *    
         % log ( (conditional probability of observing a calcium events given mouse is in bin) / (probability of observing k calcium events (0 or 1) for a cell
         jointProbability = neuronFiringProbability(1, i) .* probabilityOfMouseOccupyingBin(1, j);
-        cProbEventGivenBin = jointProbability/probabilityOfMouseOccupyingBin(1, j); 
-        
-        SI_thisbin = cProbEventGivenBin*log(cProbEventGivenBin/neuronFiringProbability(1, i));
-        
+        cProbEventGivenBin = jointProbability/probabilityOfMouseOccupyingBin(1, j);         
+        SI_thisbin = cProbEventGivenBin*log(cProbEventGivenBin/neuronFiringProbability(1, i));        
         MI_perbin(1, j) = SI_thisbin; 
-
     end
-
     MI_perCellperBin(i,:) = MI_perbin; 
-
-MI_perCell = MI_perCellperBin * probabilityOfMouseOccupyingBin'; 
-     
+MI_perCell = MI_perCellperBin * probabilityOfMouseOccupyingBin';     
 end
 
 

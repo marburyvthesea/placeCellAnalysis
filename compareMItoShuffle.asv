@@ -18,6 +18,9 @@ significantIndices = find(MI_perCell > upperBound);
 disp('Indices of neurons with significant mutual spatial information:');
 disp(significantIndices);
 
+
+
+
 %% get top firing bins of significantIndicies
 topBinsSigIndices = topBins(significantIndices, :);
 
