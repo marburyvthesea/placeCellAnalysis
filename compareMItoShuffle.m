@@ -1,25 +1,39 @@
 %% calc neurons with significant spatial information 
 % Define the HDF5 file path and dataset name for shuffled mutual information data
-MI_shuffled_results_file = 'dataFinalesLinearTrackMouse6Day4cellTracesAlignedToTracking_MI_results.h5';
+filePath = '/Users/johnmarshall/Documents/Analysis/miniscope_lineartrack/mIAnalysis/' ; 
+MI_shuffled_results_file = 'dataFinalesLinearTrackMouse3Day7cellTracesAlignedToTracking_MI_results.h5';
 h5ResultsFilePath = strcat(filePath, MI_shuffled_results_file);
 datasetName = '/MI_perCellAllShuffles';
 
 % Load the shuffled MI data for all 1000 shuffles
 MI_perCellAllShuffles = h5read(h5ResultsFilePath, datasetName);
 
+% define bins to include 
+binsubset = 2:31;
+MI_perCellAllShuffles_subset = MI_perCellAllShuffles(:, binsubset, :);
+
 % Compute the 95th percentile (one-sided upper bound) for the shuffled data
 upperBound = prctile(MI_perCellAllShuffles, 95, 2); % 95th percentile across shuffles for each cell
+upperBoundSubset = prctile(MI_perCellAllShuffles_subset, 95, 2); % 95th percentile across shuffles for each cell
+
 
 %%
 % Find indices of neurons where actual MI is significantly greater than the shuffled 95% threshold
 significantIndices = find(MI_perCell > upperBound);
+significantIndicesSubset = find(MI_perCell_subset > upperBoundSubset);
 
 % Display the indices of significant neurons
 disp('Indices of neurons with significant mutual spatial information:');
 disp(significantIndices);
 
+disp('Indices of neurons with significant mutual spatial information subset:');
+disp(significantIndicesSubset);
+
 %% get top firing bins of significantIndicies
 topBinsSigIndices = topBins(significantIndices, :);
+
+topBinsSigIndicesSubset = topBins(significantIndicesSubset, :);
+topBinsSigIndicesSubset(~ismember(topBinsSigIndicesSubset, binsubset)) = NaN;
 
 %% for visualiation normalize MI to shuffle
 % Compute the mean MI for each cell across all shuffles
@@ -28,14 +42,29 @@ meanMI_perCellShuffled = mean(MI_perCellAllShuffles, 2);
 normalizedMI_perCell = MI_perCell ./ meanMI_perCellShuffled;
 normalizedMI_perCellSignificantIdx = normalizedMI_perCell(significantIndices, :);
 
+meanMI_perCellShuffledSubset = mean(MI_perCellAllShuffles_subset, 2);
+% Normalize each cell's actual MI by the mean MI of its shuffled values
+normalizedMI_perCellSubset = MI_perCell_subset ./ meanMI_perCellShuffledSubset;
+normalizedMI_perCellSignificantIdxSubset = normalizedMI_perCellSubset(significantIndices, :);
+
 %% store 
 % Initialize the structure array with the first file's data if needed 
-dataStruct(1).fileName = fileName;
-dataStruct(1).topBinsSigIndices = topBinsSigIndices;
-dataStruct(1).significantIndices = significantIndices;
-dataStruct(1).normalizedMI_perCellSignificantIdx = normalizedMI_perCellSignificantIdx;
-dataStruct(1).normalizedMI_perCell = normalizedMI_perCell;
+% Check if dataStruct already exists and is non-empty
+if ~exist('dataStruct', 'var') || isempty(dataStruct)
+    dataStruct(1).fileName = fileName;
+    dataStruct(1).topBinsSigIndices = topBinsSigIndices;
+    dataStruct(1).significantIndices = significantIndices;
+    dataStruct(1).normalizedMI_perCellSignificantIdx = normalizedMI_perCellSignificantIdx;
+    dataStruct(1).normalizedMI_perCell = normalizedMI_perCell;
 
+    dataStruct(1).topBinsSigIndicesSubset = topBinsSigIndicesSubset;
+    dataStruct(1).significantIndicesSubset = significantIndicesSubset;
+    dataStruct(1).normalizedMI_perCellSignificantIdxSubset = normalizedMI_perCellSignificantIdxSubset;
+    dataStruct(1).normalizedMI_perCellSubset = normalizedMI_perCellSubset;
+
+else
+    disp('dataStruct already exists; skipping initialization.');
+end
 %% Suppose you have new values for fileName, topBinsSigIndices, and significantIndices
 newIndex = length(dataStruct) + 1;  % Find the next index in the structure array
 
@@ -45,6 +74,16 @@ dataStruct(newIndex).topBinsSigIndices = topBinsSigIndices;
 dataStruct(newIndex).significantIndices = significantIndices;
 dataStruct(newIndex).normalizedMI_perCellSignificantIdx = normalizedMI_perCellSignificantIdx;
 dataStruct(newIndex).normalizedMI_perCell = normalizedMI_perCell;
+
+dataStruct(newIndex).topBinsSigIndicesSubset = topBinsSigIndicesSubset;
+dataStruct(newIndex).significantIndicesSubset = significantIndicesSubset;
+dataStruct(newIndex).normalizedMI_perCellSignificantIdxSubset = normalizedMI_perCellSignificantIdxSubset;
+dataStruct(newIndex).normalizedMI_perCellSubset = normalizedMI_perCellSubset;
+%% save 
+matFilePath = fullfile(filePath, 'MIdata.mat');
+
+% Save dataStruct to the specified .mat file
+save(matFilePath, 'dataStruct');
 
 %% load top firing bins 
 

@@ -114,6 +114,9 @@ h5write(h5FilePath, datasetName, topBins);
 
 %% calculate mutual information per cell
 
+% for subset calulation
+binsubset = 2:31;
+
 % overall firing probability for each neuron 
 neuronFiringProbability = mean(signalPeaks, 1);
 % probability of calcium event over occupany probability
@@ -137,7 +140,10 @@ for i = 1:size(cellFiringProbabilityPerBin,1)
         MI_perbin(1, j) = SI_thisbin; 
     end
     MI_perCellperBin(i,:) = MI_perbin; 
-MI_perCell = MI_perCellperBin * probabilityOfMouseOccupyingBin';     
+MI_perCell = MI_perCellperBin * probabilityOfMouseOccupyingBin'; 
+
+MI_perCell_subset = MI_perCellperBin(:, binsubset) * probabilityOfMouseOccupyingBin(binsubset)';
+
 end
 
 
