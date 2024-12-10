@@ -177,7 +177,7 @@ cellTracesArray = table2array(cellTraces);
 [numFrames, numNeurons] = size(cellTracesArray);
 % Define HDF5 file path and dataset name
 result = regexp(fileName, '_([^_]+)\.csv$', 'tokens', 'once');
-h5FilePath = strcat(filePath, result{1}, '_allPeaksShuffled.h5');
+h5FilePath = strcat(filePath, '/', fName(1:15), result{1}, '_allPeaksShuffled.h5');
 datasetName = '/allPeaksShuffled';
 
 
