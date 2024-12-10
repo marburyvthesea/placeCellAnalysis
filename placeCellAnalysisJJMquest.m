@@ -104,7 +104,7 @@ for neuron = 1:numNeurons
 end
 
 result = regexp(fileName, '_([^_]+)\.csv$', 'tokens', 'once');
-h5FilePath = strcat(filePath, result{1}, '_topBins.h5');  % Set the HDF5 file path
+h5FilePath = strcat(filePath,'/', fName(1:15),result{1}, '_topBins.h5');  % Set the HDF5 file path
 datasetName = '/topBins';  % Define the dataset name
 if isfile(h5FilePath)
     delete(h5FilePath);
@@ -155,7 +155,7 @@ MI_perCell = MI_perCellperBin * probabilityOfMouseOccupyingBin';
      
 end
 
-h5FilePath = strcat(filePath, result{1}, '_MI_per_cell_actual.h5');  % Set the HDF5 file path
+h5FilePath = strcat(filePath,'/', fName(1:15), '_MI_per_cell_actual.h5');  % Set the HDF5 file path
 
 if isfile(h5FilePath)
     delete(h5FilePath);
@@ -229,8 +229,8 @@ disp('All shuffles have been processed and saved to the HDF5 file.');
 %% calculate mutual information iteratively on chunks
 
 % Define HDF5 file paths
-h5FilePath = strcat(filePath, result{1}, '_allPeaksShuffled.h5');  % Path for shuffled data
-h5ResultsFilePath = strcat(filePath, result{1}, '_MI_results.h5');  % Path for MI results
+h5FilePath = strcat(filePath,'/', fName(1:15), result{1}, '_allPeaksShuffled.h5');  % Path for shuffled data
+h5ResultsFilePath = strcat(filePath,'/', fName(1:15),result{1}, '_MI_results.h5');  % Path for MI results
 
 % Define the size of each dataset
 [numCells, numBins] = size(cellFiringProbabilityPerBin);  % Assuming dimensions of cells and bins
@@ -290,123 +290,6 @@ for startShuffle = 1:chunkSize:numShuffles
 end
 
 disp('Mutual information calculations and storage completed.');
-
-%% OLD CODE: shuffle calcium traces and compute signal peaks without using chunks
-
-%shuffle 
-numShuffles = 100 ; 
-cellTracesArray = table2array(cellTraces);
-[numFrames, numNeurons] = size(cellTracesArray);
-allPeaksShuffled = zeros(numFrames,numNeurons,numShuffles); 
-for shuffle = 1:numShuffles
-    disp(shuffle); 
-    % Initialize an array to store the shuffled data
-    shuffledCellTraces = cellTracesArray;
-    % Loop through each neuron (column) and shuffle the frames
-    for neuron = 1:numNeurons
-        % Generate a random permutation of row indices
-        shuffleIndices = randperm(numFrames);
-        % Apply the shuffle to the current neuron (column)
-        shuffledCellTraces(:, neuron) = cellTracesArray(shuffleIndices, neuron);
-    end
-    %
-    [signalPeaksThisShuffle] = computeSignalPeaks(shuffledCellTraces, 'doMovAvg', 0, 'reportMidpoint', 1, 'numStdsForThresh', 2.5);
-    allPeaksShuffled(:,:,shuffle)=signalPeaksThisShuffle; 
-end 
-
-
-%% OLD CODE: calculate mutual information per cell for shuffled dataset 
-
-MI_perCellperBinAllShuffles = zeros(size(cellFiringProbabilityPerBin,1), size(cellFiringProbabilityPerBin,2), numShuffles);
-MI_perCellAllShuffles = zeros(1, size(cellFiringProbabilityPerBin,1), numShuffles);
-
-for shuffle = 1:numShuffles
-    disp('calculating mutual information for shuffle:'); 
-    disp(shuffle);
-    
-    %Extract time information and caclulate event rate 
-    disp('extracting peaks')
-    spikes=allPeaksShuffled(:,:,shuffle);
-    time = pos;
-    % Define the 1-second window
-    window_size = round(1 / mean(diff(time)));
-    % Create a 1D convolution window to sum across the time dimension
-    window = ones(window_size, 1);
-    % Perform sliding window sum along the time dimension using convolution
-    event_rateThisShuffle = conv2(spikes, window, 'same') / window_size;
-
-    % find firing probability in bins for shuffled data 
-    disp('calculating firing probability in bins')
-    % Assuming 'event_rate' is a 98x11839 array and 'x_position' is a 1x11858 array
-    event_rate_t = event_rateThisShuffle'; 
-    x_position_t = x_position';
-
-    % Initialize a matrix to store the probabilities for each element
-    cellFiringProbabilityPerBinThisShuffle = zeros(size(event_rate_t, 1), length(counts));
-    % Loop over each element in 'event_rate'
-    for i = 1:size(event_rate_t, 1)
-        % get indicies where cell event rate is nonzero 
-        nonzero_indices = find(event_rate_t(i, :) ~= 0);
-    
-        %get x location at these indicies 
-        x_position_when_active=x_position_t(nonzero_indices);
-
-        % get the counts for when the mouse is active in each bin, in # of
-        % samples
-        [event_counts_per_x_bin, edges] = histcounts(x_position_when_active, bin_edges);
-
-        % Calculate the probability for each bin
-        probability_per_bin = event_counts_per_x_bin ./ length(event_rate_t(i,:));
-        cellFiringProbabilityPerBinThisShuffle(i, :) = probability_per_bin;
-    end
-
-    % overall firing probability for each neuron 
-    neuronFiringProbabilityThisShuffle = mean(allPeaksShuffled(:,:,shuffle), 1);
-    
-    % probability of calcium event over occupany probability
-    expanded_probability_per_bin = repmat(probabilityOfMouseOccupyingBin, size(cellFiringProbabilityPerBinThisShuffle, 1), 1);
-    p_event_over_p_occupancy = cellFiringProbabilityPerBinThisShuffle ./ expanded_probability_per_bin;
-    % sum of event probabilities in each bin
-    
-    MI_perCellperBinThisShuffle = zeros(size(cellFiringProbabilityPerBinThisShuffle,1), size(cellFiringProbabilityPerBinThisShuffle,2));
-    MI_perCellThisShuffle = zeros(1, size(cellFiringProbabilityPerBinThisShuffle,1));
-    
-    % for each cell
-    size(cellFiringProbabilityPerBinThisShuffle,1);
-    disp('calculating mutual information per cell')
-    for i = 1:size(cellFiringProbabilityPerBinThisShuffle,1)
-        MI_perbin = zeros(1, size(probabilityOfMouseOccupyingBin, 2));
-        %for each bin  
-        for j = 1:size(probabilityOfMouseOccupyingBin, 2)
-            %%TO DO: from here 
-            % conditional p of event given in bin is = (prob in bin + prob of event) / (prob in bin)
-            % (conditional probability of observing a calcium events given mouse is in bin) *    
-            % log ( (conditional probability of observing a calcium events given mouse is in bin) / (probability of observing k calcium events (0 or 1) for a cell
-            jointProbability = neuronFiringProbability(1, i) .* probabilityOfMouseOccupyingBin(1, j);
-            cProbEventGivenBin = jointProbability/probabilityOfMouseOccupyingBin(1, j); 
-            SI_thisbin = cProbEventGivenBin*log(cProbEventGivenBin/neuronFiringProbability(1, i));
-            MI_perbin(1, j) = SI_thisbin; 
-        end
-        
-        MI_perCellperBinThisShuffle(i,:) = MI_perbin; 
-    MI_perCellThisShuffle = MI_perCellperBinThisShuffle * probabilityOfMouseOccupyingBin';      
-    
-    end
-    
-    MI_perCellperBinAllShuffles(:,:,1) = MI_perCellperBinThisShuffle ; 
-    MI_perCellAllShuffles(:,:,1) = MI_perCellThisShuffle ; 
-
-% make MI_perCellAllShuffles 2d
-MI_perCellAllShuffles = squeeze(MI_perCellAllShuffles(1,:,:));
-
-end
-
-
-
-
-
-
-
 
 
 
