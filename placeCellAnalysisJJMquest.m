@@ -7,6 +7,7 @@ disp('loading');
 disp(alignedFile);
 dataTable = readtable(alignedFile, 'VariableNamesLine', 1);
 dataTable(1, :) = [];
+numFrames=size(dataTable,1);
 
 [filePath, fName, ext] = fileparts(alignedFile);
 fileName = strcat(fName, ext); 
@@ -155,7 +156,7 @@ MI_perCell = MI_perCellperBin * probabilityOfMouseOccupyingBin';
      
 end
 
-h5FilePath = strcat(filePath,'/', fName(1:15), '_MI_per_cell_actual.h5');  % Set the HDF5 file path
+h5FilePath = strcat(filePath,'/', fName(1:21), '_MI_per_cell_actual.h5');  % Set the HDF5 file path
 
 if isfile(h5FilePath)
     delete(h5FilePath);
@@ -172,12 +173,12 @@ h5write(h5FilePath, '/binOccupancyProbability', probabilityOfMouseOccupyingBin);
 
 % Define parameters
 numShuffles = 1000;
-chunkSize = 100; % Number of shuffles per chunk
+chunkSize = floor(500000000 / (numFrames*numNeurons)); % Number of shuffles per chunk
 cellTracesArray = table2array(cellTraces);
 [numFrames, numNeurons] = size(cellTracesArray);
 % Define HDF5 file path and dataset name
 result = regexp(fileName, '_([^_]+)\.csv$', 'tokens', 'once');
-h5FilePath = strcat(filePath, '/', fName(1:15), result{1}, '_allPeaksShuffled.h5');
+h5FilePath = strcat(filePath, '/', fName(1:21), result{1}, '_allPeaksShuffled.h5');
 datasetName = '/allPeaksShuffled';
 
 
@@ -229,8 +230,8 @@ disp('All shuffles have been processed and saved to the HDF5 file.');
 %% calculate mutual information iteratively on chunks
 
 % Define HDF5 file paths
-h5FilePath = strcat(filePath,'/', fName(1:15), result{1}, '_allPeaksShuffled.h5');  % Path for shuffled data
-h5ResultsFilePath = strcat(filePath,'/', fName(1:15),result{1}, '_MI_results.h5');  % Path for MI results
+h5FilePath = strcat(filePath,'/', fName(1:21), result{1}, '_allPeaksShuffled.h5');  % Path for shuffled data
+h5ResultsFilePath = strcat(filePath,'/', fName(1:21),result{1}, '_MI_results.h5');  % Path for MI results
 
 % Define the size of each dataset
 [numCells, numBins] = size(cellFiringProbabilityPerBin);  % Assuming dimensions of cells and bins
