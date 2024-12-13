@@ -1,7 +1,7 @@
 %% calc neurons with significant spatial information 
 % Define the HDF5 file path and dataset name for shuffled mutual information data
 filePath = '/Users/johnmarshall/Documents/Analysis/miniscope_lineartrack/mIAnalysis/' ; 
-MI_shuffled_results_file = 'dataFinalesLinearTrackMouse3Day7cellTracesAlignedToTracking_MI_results.h5';
+MI_shuffled_results_file = 'ell_traces_MousMouse1Day1cellTracesAlignedToTracking_MI_results.h5';
 h5ResultsFilePath = strcat(filePath, MI_shuffled_results_file);
 datasetName = '/MI_perCellAllShuffles';
 
@@ -80,7 +80,8 @@ dataStruct(newIndex).significantIndicesSubset = significantIndicesSubset;
 dataStruct(newIndex).normalizedMI_perCellSignificantIdxSubset = normalizedMI_perCellSignificantIdxSubset;
 dataStruct(newIndex).normalizedMI_perCellSubset = normalizedMI_perCellSubset;
 %% save 
-matFilePath = fullfile(filePath, 'MIdata.mat');
+fileName = strcat(datestr(now, 'mm_dd_yy_HH_MM_SS'), '_MIdata.mat');
+matFilePath = fullfile(filePath, fileName);
 
 % Save dataStruct to the specified .mat file
 save(matFilePath, 'dataStruct');
