@@ -17,18 +17,13 @@ upperBound = prctile(MI_perCellAllShuffles, 95, 2); % 95th percentile across shu
 upperBoundSubset = prctile(MI_perCellAllShuffles_subset, 95, 2); % 95th percentile across shuffles for each cell
 %%
 MI_actual_results_file = 'ell_traces_Mouse1Day2_MI_per_cell_actual.h5';
-topBins_file = 'ell_traces_MousMouse1Day2cellTracesAlignedToTracking_topBins.h5';
 h5ResultsFilePathActual = strcat(filePath, MI_actual_results_file);
 MI_perCell = h5read(h5ResultsFilePathActual, '/MI_perCellActual');
-MI_perCellperBin = h5read(h5ResultsFilePathActual, '/MI_perCellperBin');
-
-toBinsFilePath = strcat(filePath, topBins_file);
-topBins = h5read(toBinsFilePath, '/topBins');
 
 %%
 % Find indices of neurons where actual MI is significantly greater than the shuffled 95% threshold
 significantIndices = find(MI_perCell > upperBound);
-%significantIndicesSubset = find(MI_perCell_subset > upperBoundSubset);
+significantIndicesSubset = find(MI_perCell_subset > upperBoundSubset);
 
 % Display the indices of significant neurons
 disp('Indices of neurons with significant mutual spatial information:');
@@ -40,8 +35,8 @@ disp(significantIndicesSubset);
 %% get top firing bins of significantIndicies
 topBinsSigIndices = topBins(significantIndices, :);
 
-%topBinsSigIndicesSubset = topBins(significantIndicesSubset, :);
-%topBinsSigIndicesSubset(~ismember(topBinsSigIndicesSubset, binsubset)) = NaN;
+topBinsSigIndicesSubset = topBins(significantIndicesSubset, :);
+topBinsSigIndicesSubset(~ismember(topBinsSigIndicesSubset, binsubset)) = NaN;
 
 %% for visualiation normalize MI to shuffle
 % Compute the mean MI for each cell across all shuffles

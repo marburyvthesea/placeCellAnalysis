@@ -1,0 +1,6 @@
+%%have a data structure for each mouse with place cells/day in
+%%significantIndiciesSubset
+ 
+%have "key" that has indicies across days
+
+%compile "unqiue" global key for each cell 
