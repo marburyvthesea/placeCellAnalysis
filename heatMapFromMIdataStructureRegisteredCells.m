@@ -1,39 +1,39 @@
 %%heat map from MI information dataStructure
 %%add neurons registered across all days 
 % Loop through the columns of sigNeuronsInAllDays and assign to the structure
-%for colIdx = 1:size(sigNeuronsInAllDays, 2)
-%    dataStruct(colIdx).sigNeuronsInAllDays = sigNeuronsInAllDays(:, colIdx);
-%end
+for colIdx = 1:size(sigNeuronsInAllDays, 2)
+    dataStruct(colIdx).sigNeuronsInAllDays = sigNeuronsInAllDays(:, colIdx);
+end
 %%
 pathToDirectoryWithTrackingFiles = '/Users/johnmarshall/Documents/Analysis/miniscope_lineartrack/m3_AlignedToTracking_toalign/' ; 
 
 % Initialize a cell array to store the extracted data with padding for each file
-extractedData = cell(length(dataStruct), 1);
+extractedDataAllDays = cell(length(dataStruct), 1);
 
 % Loop over each file in dataStruct
 for i = 1:length(dataStruct)
     % Load the current file
     fileName = dataStruct(i).fileName;
-    significantIndicesSubset = dataStruct(i).significantIndicesSubset + 1;  % Add 1 to adjust for indexing
+    significantIndicesAllDaysSubset = dataStruct(i).sigNeuronsInAllDays + 1;  % Add 1 to adjust for indexing
 
     % Read the .csv file into a table or array
     fileData = readmatrix(strcat(pathToDirectoryWithTrackingFiles, fileName));  % Using readmatrix to handle .csv format directly
     fileData(1, :) = [];
 
     % Extract the specified columns (significant cells)
-    significantData = fileData(:, significantIndicesSubset);
+    significantData = fileData(:, significantIndicesAllDaysSubset);
 
     % Store the extracted data in the cell array
-    extractedData{i} = significantData;
+    extractedDataAllDays{i} = significantData;
 end
 
 %% Determine the maximum number of rows and columns across all files
-maxRows = max(cellfun(@(x) size(x, 1), extractedData));
-maxCols = max(cellfun(@(x) size(x, 2), extractedData));
+maxRows = max(cellfun(@(x) size(x, 1), extractedDataAllDays));
+maxCols = max(cellfun(@(x) size(x, 2), extractedDataAllDays));
 
 % Pad each extracted dataset to match the maximum number of rows and columns
-for i = 1:length(extractedData)
-    data = extractedData{i};
+for i = 1:length(extractedDataAllDays)
+    data = extractedDataAllDays{i};
     % Pad rows if needed
     if size(data, 1) < maxRows
         data = [data; NaN(maxRows - size(data, 1), size(data, 2))];
@@ -43,7 +43,7 @@ for i = 1:length(extractedData)
         data = [data, NaN(size(data, 1), maxCols - size(data, 2))];
     end
     % Store the padded data back in the cell array
-    extractedData{i} = data;
+    extractedDataAllDays{i} = data;
 end
 
 % Combine the data into a single 3D array (maxRows x maxCols x numFiles)
@@ -51,7 +51,7 @@ numFiles = length(dataStruct);
 paddedDataArray = NaN(maxRows, maxCols, numFiles);  % Initialize a 3D array with NaNs
 
 for i = 1:numFiles
-    paddedDataArray(:, :, i) = extractedData{i};  % Store each file's data in the 3D array
+    paddedDataArray(:, :, i) = extractedDataAllDays{i};  % Store each file's data in the 3D array
 end
 
 %% extract location information for each file 
@@ -136,7 +136,7 @@ for i = 1:length(dataStruct)
 end
 
 
-%% Combine all neurons into a single matrix for plotting
+%% Combine all neurons into a single matrix for plotting across all days
 % Concatenate all columns (neurons) from each file's binned activity
 combinedBinnedActivity = cat(2, binnedActivity{:});
 % Find columns that are not entirely NaN
@@ -184,7 +184,7 @@ set(gca, 'YDir', 'normal');  % Correct the y-axis direction
 %%plot showing boundaries by day
 %% Combine all neurons into a single matrix for plotting
 combinedBinnedActivity = [];
-combinedNeuronIndices = [];  % To store neuron indices for the y-axis labels
+combinedNeuronIndices = [];  % To store the indices of the neurons for the y-axis labels
 
 % Track the start and end indices for each day's data
 dayBoundaries = zeros(1, numel(binnedActivity) + 1);
@@ -195,10 +195,11 @@ sortedDayActivities = cell(1, numel(binnedActivity)); % Store sorted activities 
 for i = 1:numel(binnedActivity)
     % Extract the binned activity for the current day
     currentDayActivity = binnedActivity{i};
-    currentNeuronIndices = dataStruct(i).significantIndicesSubset;  % Neuron indices for the current day
+    currentNeuronIndices = dataStruct(i).sigNeuronsInAllDays;  % Indices for the current day
+
 
     % Find valid columns (neurons) that are not entirely NaN
-    validColumns = any(~isnan(currentDayActivity), 1);
+    validColumns = any(~isnan(currentDayActivity(:,:)), 1);
     currentDayActivity = currentDayActivity(:, validColumns);
     currentNeuronIndices = currentNeuronIndices(validColumns);  % Keep only valid indices
 
@@ -215,7 +216,7 @@ for i = 1:numel(binnedActivity)
 
     % Append current day's data to the combined matrix
     combinedBinnedActivity = [combinedBinnedActivity, sortedDayActivity(:,:)];
-    combinedNeuronIndices = [combinedNeuronIndices; sortedNeuronIndices];
+    combinedNeuronIndices = [combinedNeuronIndices; sortedNeuronIndices(:)];
 
     % Record the boundary for this day
     currentIndex = currentIndex + size(sortedDayActivity, 2);
