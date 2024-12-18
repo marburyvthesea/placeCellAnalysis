@@ -140,11 +140,24 @@ for i = 1:size(cellFiringProbabilityPerBin,1)
     end
     MI_perCellperBin(i,:) = MI_perbin; 
 MI_perCell = MI_perCellperBin * probabilityOfMouseOccupyingBin'; 
-
 MI_perCell_subset = MI_perCellperBin(:, binsubset) * probabilityOfMouseOccupyingBin(binsubset)';
 
 end
 
+h5FilePath = strcat(filePath,'/', fName(1:21), '_MI_per_cell_actual.h5');  % Set the HDF5 file path
+
+if isfile(h5FilePath)
+    delete(h5FilePath);
+end
+h5create(h5FilePath, '/MI_perCellActual', size(MI_perCell), 'Datatype', 'double');
+h5create(h5FilePath, '/MI_perCellSubset', size(MI_perCell_subset), 'Datatype', 'double');
+h5create(h5FilePath, '/MI_perCellperBin', size(MI_perCellperBin), 'Datatype', 'double');
+h5create(h5FilePath, '/binOccupancyProbability', size(probabilityOfMouseOccupyingBin), 'Datatype', 'double');
+
+h5write(h5FilePath, '/MI_perCellActual', MI_perCell);
+h5write(h5FilePath, '/MI_perCellSubset', MI_perCell_subset);
+h5write(h5FilePath, '/MI_perCellperBin', MI_perCellperBin);
+h5write(h5FilePath, '/binOccupancyProbability', probabilityOfMouseOccupyingBin);
 
 %% shuffle calcium traces and compute signal peaks in chunks to avoid filling up RAM
 
