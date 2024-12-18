@@ -11,22 +11,29 @@ MI_perCellAllShuffles = h5read(h5ResultsFilePath, datasetName);
 
 % define bins to include 
 binsubset = 2:31;
-MI_perCellAllShuffles_subset = MI_perCellAllShuffles(:, binsubset, :);
+MI_perCellPerBinShuffles = h5read(h5ResultsFilePath, '/MI_perCellperBinAllShuffles');
+MI_perCellPerBinShuffles_subset = MI_perCellPerBinShuffles(:, binsubset, :);
 
 % Compute the 95th percentile (one-sided upper bound) for the shuffled data
 upperBound = prctile(MI_perCellAllShuffles, 95, 2); % 95th percentile across shuffles for each cell
-upperBoundSubset = prctile(MI_perCellAllShuffles_subset, 95, 2); % 95th percentile across shuffles for each cell
 %%
 MI_actual_results_file = 'ell_traces_Mouse3day2_MI_per_cell_actual.h5';
 topBins_file = 'day2Mouse3day2cellTracesAlignedToTracking_topBins.h5';
 h5ResultsFilePathActual = strcat(filePath, MI_actual_results_file);
 MI_perCell = h5read(h5ResultsFilePathActual, '/MI_perCellActual');
 MI_perCell_subset = h5read(h5ResultsFilePathActual, '/MI_perCellSubset');
-MI_perCellperBin = h5read(h5ResultsFilePathActual, '/MI_perCellperBin');
+MI_perCellPerBin = h5read(h5ResultsFilePathActual, '/MI_perCellperBin');
+binOccupancyProbability = h5read(h5ResultsFilePathActual, '/binOccupancyProbability');
 
 toBinsFilePath = strcat(filePath, topBins_file);
 topBins = h5read(toBinsFilePath, '/topBins');
 
+%
+MI_perCellShuffled_subset_precat = arrayfun(@(z) MI_perCellPerBinShuffles_subset(:, :, z) * binOccupancyProbability(binsubset)' ...
+    , 1:size(MI_perCellPerBinShuffles_subset, 3), 'UniformOutput', false);
+MI_perCellShuffled_subset = squeeze(cat(3, MI_perCellShuffled_subset_precat{:}));  % Convert the cell array to a 3D matrix
+
+upperBoundSubset = prctile(MI_perCellShuffled_subset, 95, 2); % 95th percentile across shuffles for each cell
 %%
 % Find indices of neurons where actual MI is significantly greater than the shuffled 95% threshold
 significantIndices = find(MI_perCell > upperBound);
