@@ -5,7 +5,8 @@
 %    dataStruct(colIdx).sigNeuronsInAllDays = sigNeuronsInAllDays(:, colIdx);
 %end
 %%
-pathToDirectoryWithTrackingFiles = '/Users/johnmarshall/Documents/Analysis/miniscope_lineartrack/m3_AlignedToTracking_toalign/' ; 
+pathToDirectoryWithTrackingFiles = '/Users/johnmarshall/Documents/Analysis/miniscope_lineartrack/mIAnalysis/day2/' ; 
+
 
 % Initialize a cell array to store the extracted data with padding for each file
 extractedData = cell(length(dataStruct), 1);
@@ -17,7 +18,8 @@ for i = 1:length(dataStruct)
     significantIndicesSubset = dataStruct(i).significantIndicesSubset + 1;  % Add 1 to adjust for indexing
 
     % Read the .csv file into a table or array
-    fileData = readmatrix(strcat(pathToDirectoryWithTrackingFiles, fileName));  % Using readmatrix to handle .csv format directly
+    trackingFile = dataStruct(i).trackingFileName; 
+    fileData = readmatrix(strcat(pathToDirectoryWithTrackingFiles, trackingFile));  % Using readmatrix to handle .csv format directly
     fileData(1, :) = [];
 
     % Extract the specified columns (significant cells)
@@ -62,11 +64,11 @@ extractedCoordinates = cell(length(dataStruct), 1);
 % Loop over each file in dataStruct to extract the .X_coor and .Y_coor columns
 for i = 1:length(dataStruct)
     % Load the current file
-    fileName = dataStruct(i).fileName;
+    trackingFile = dataStruct(i).trackingFileName; 
 
     % Read the .csv file into a table to access column names
     %fileData = readtable(strcat(pathToDirectoryWithTrackingFiles, fileName)); 
-    fileData = readtable(strcat(pathToDirectoryWithTrackingFiles, fileName), 'VariableNamesLine', 1);
+    fileData = readtable(strcat(pathToDirectoryWithTrackingFiles, trackingFile), 'VariableNamesLine', 1);
     fileData(1, :) = [];
     
     % Extract .X_coor and .Y_coor columns if they exist
@@ -256,26 +258,4 @@ ylabel('Neuron Index');
 set(gca, 'YDir', 'normal');  % Correct the y-axis direction
 
 
-%% histograms of MI data
-% Concatenate all normalized MI values across dataStruct entries
-allNormalizedMI = vertcat(dataStruct.normalizedMI_perCellSubset);
 
-% Concatenate all significant normalized MI values across dataStruct entries
-significantNormalizedMI = vertcat(dataStruct.normalizedMI_perCellSignificantIdxSubset);
-
-% Plot histogram of all normalized MI values
-figure;
-histogram(allNormalizedMI, 'Normalization', 'pdf');
-hold on;
-
-% Add red vertical lines for significant normalized MI values
-for i = 1:length(significantNormalizedMI)
-    xline(significantNormalizedMI(i), 'r', 'LineWidth', 1.5);
-end
-
-% Customize plot
-title('Histogram of Normalized MI per Cell');
-xlabel('Normalized MI');
-ylabel('Probability Density');
-legend('All Normalized MI', 'Significant MI values');
-hold off;
