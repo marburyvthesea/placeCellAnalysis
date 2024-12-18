@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -A p30771
+#SBATCH -A p32501
 #SBATCH -p short
 #SBATCH -t 04:00:00
 #SBATCH -o ./logfiles/placeCellAnalysis.%x-%j.out # STDOUT
@@ -19,16 +19,16 @@ INPUT_pathToAlignedData=$1
 echo $INPUT_pathToAlignedData
 
 #add project directory to PATH
-export PATH=$PATH/projects/p30771/
+export PATH=$PATH/projects/p32501/
 
 
 #load modules to use
 module load matlab/r2023b
 
 #cd to script directory
-cd /home/jma819/placeCellAnalysis
+cd /home/ccc1839/placeCellAnalysis
 #run analysis 
 
-matlab -nosplash -nodesktop -r "addpath(genpath('/home/jma819/placeCellAnalysis'));maxNumCompThreads(str2num(getenv('SLURM_NPROCS')));alignedFile='$INPUT_pathToAlignedData';run('placeCellAnalysisJJMquest.m');exit;"
+matlab -nosplash -nodesktop -r "addpath(genpath('/home/ccc1839/placeCellAnalysis'));maxNumCompThreads(str2num(getenv('SLURM_NPROCS')));alignedFile='$INPUT_pathToAlignedData';run('placeCellAnalysisJJMquest.m');exit;"
 
 echo 'finished analysis'

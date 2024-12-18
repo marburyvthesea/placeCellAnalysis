@@ -115,6 +115,9 @@ h5write(h5FilePath, datasetName, topBins);
 
 %% calculate mutual information per cell
 
+% for subset calulation
+binsubset = 2:31;
+
 % overall firing probability for each neuron 
 neuronFiringProbability = mean(signalPeaks, 1);
 
