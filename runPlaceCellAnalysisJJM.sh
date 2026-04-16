@@ -1,12 +1,13 @@
 #!/bin/bash
 #SBATCH -A p30771
-#SBATCH -p short
-#SBATCH -t 04:00:00
+#SBATCH -p normal
+#SBATCH -t 48:00:00
 #SBATCH -o ./logfiles/placeCellAnalysis.%x-%j.out # STDOUT
 #SBATCH --job-name="placeCellAnalysis"
-#SBATCH --mem-per-cpu=5200M
+#SBATCH --mem=25G
 #SBATCH -N 1
-#SBATCH -n 16
+#SBATCH -n 1
+#SBATCH --cpus-per-task=16
 
 module purge all
 
@@ -29,6 +30,6 @@ module load matlab/r2023b
 cd /home/jma819/placeCellAnalysis
 #run analysis 
 
-matlab -nosplash -nodesktop -r "addpath(genpath('/home/jma819/placeCellAnalysis'));maxNumCompThreads(str2num(getenv('SLURM_NPROCS')));alignedFile='$INPUT_pathToAlignedData';run('placeCellAnalysisJJMquest.m');exit;"
+matlab -nosplash -nodesktop -r "addpath(genpath('/home/jma819/placeCellAnalysis'));nCPUs=str2double(getenv('SLURM_CPUS_PER_TASK'));maxNumCompThreads(nCPUs);alignedFile='$INPUT_pathToAlignedData';run('placeCellAnalysisJJMquest.m');exit;"
 
 echo 'finished analysis'
