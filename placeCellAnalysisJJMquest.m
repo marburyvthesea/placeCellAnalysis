@@ -40,7 +40,7 @@ velocity_2d = [velocity_2d; NaN];
 
 %% calculate spike rate using 1 second sliding window
 % label peaks exceeding 2.5 SD threshold
-[signalPeaks] = computeSignalPeaks(table2array(cellTraces), 'doMovAvg', 0, 'reportMidpoint', 1, 'numStdsForThresh', 2.5);
+[signalPeaks] = computeSignalPeaks(table2array(cellTraces)', 'doMovAvg', 0, 'reportMidpoint', 1, 'numStdsForThresh', 2.5);
 %% Extract time information and caclulate event rate 
 spikes=signalPeaks;
 time = pos;
