@@ -39,7 +39,7 @@ velocity_2d = [velocity_2d; NaN];
 
 %% calculate spike rate using 1 second sliding window
 % label peaks exceeding 2.5 SD threshold
-[signalPeaks] = computeSignalPeaks(table2array(cellTraces), 'doMovAvg', 0, 'reportMidpoint', 1, 'numStdsForThresh', 2.5);
+[signalPeaks] = computeSignalPeaks(table2array(cellTraces)', 'doMovAvg', 0, 'reportMidpoint', 1, 'numStdsForThresh', 2.5)';
 %% Extract time information and caclulate event rate 
 spikes=signalPeaks;
 time = pos;
@@ -204,7 +204,7 @@ for startShuffle = 1:chunkSize:numShuffles
         end
 
         % Compute signal peaks for this shuffle
-        signalPeaksThisShuffle = computeSignalPeaks(shuffledCellTraces, 'doMovAvg', 0, 'reportMidpoint', 1, 'numStdsForThresh', 2.5);
+        signalPeaksThisShuffle = computeSignalPeaks(shuffledCellTraces', 'doMovAvg', 0, 'reportMidpoint', 1, 'numStdsForThresh', 2.5)';
         
         % Store the result in the current chunk
         allPeaksShuffledChunk(:, :, shuffle) = signalPeaksThisShuffle;
@@ -301,7 +301,7 @@ for shuffle = 1:numShuffles
         shuffledCellTraces(:, neuron) = cellTracesArray(shuffleIndices, neuron);
     end
     %
-    [signalPeaksThisShuffle] = computeSignalPeaks(shuffledCellTraces, 'doMovAvg', 0, 'reportMidpoint', 1, 'numStdsForThresh', 2.5);
+    [signalPeaksThisShuffle] = computeSignalPeaks(shuffledCellTraces', 'doMovAvg', 0, 'reportMidpoint', 1, 'numStdsForThresh', 2.5)';
     allPeaksShuffled(:,:,shuffle)=signalPeaksThisShuffle; 
 end 
 
@@ -391,8 +391,6 @@ for shuffle = 1:numShuffles
 MI_perCellAllShuffles = squeeze(MI_perCellAllShuffles(1,:,:));
 
 end
-
-
 
 
 
