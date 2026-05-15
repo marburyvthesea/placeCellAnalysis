@@ -1,14 +1,15 @@
-%% Split a combined multi-session GCAMP dataframe and run place cell analysis per session.
-% This variant avoids writing the large shuffled-peaks cube to disk.
-% For each shuffle it computes:
-%   shuffled traces -> signalPeaks -> event rate -> shuffled MI
-% and writes only the MI outputs.
+%% Split a combined multi-session event-rate dataframe and run place cell analysis per session.
+% This variant starts from precomputed event-rate matrices such as
+% instantaneousEventRate.csv or instantaneousEventRateOnsets.csv.
+% It skips the signal-peaks and sliding-window event-rate steps and goes
+% straight into the mutual-information workflow.
 %
 % Expected input:
-%   alignedFile = path to a combined CSV like GCAMP_with_velocity.csv
+%   alignedFile = path to a combined event-rate CSV
 %
 % Optional caller overrides:
-%   samplingRateHz = miniscope sampling rate in Hz (default: 20)
+%   metadataFile = companion GCAMP_with_velocity.csv path
+%                  (default: sibling file next to alignedFile)
 %   numShuffles = number of shuffle iterations (default: 1000)
 %   numBins = number of spatial bins (default: 32)
 %   binsubset = subset of bins used for MI subset output (default: 2:31)
@@ -17,14 +18,11 @@
 %   writeSplitSessionTables = whether to write one CSV per session (default: true)
 %   sessionIdColumn = column used to split sessions (default: 'ezTrackOutput')
 %   frameColumn = column used to sort rows within session (default: 'closestBehavCamFrameIdx')
+%   xPositionColumn = column used for spatial position (default: 'X_coor')
 %   runTimestamp = output timestamp override (default: datestr(now, 'yyyymmdd_HHMMSS'))
 
 if ~exist('alignedFile', 'var') || isempty(alignedFile)
-    error('Set alignedFile to the combined GCAMP CSV path before running this script.');
-end
-
-if ~exist('samplingRateHz', 'var') || isempty(samplingRateHz)
-    samplingRateHz = 20;
+    error('Set alignedFile to the combined event-rate CSV path before running this script.');
 end
 
 if ~exist('numShuffles', 'var') || isempty(numShuffles)
@@ -59,25 +57,65 @@ if ~exist('frameColumn', 'var') || isempty(frameColumn)
     frameColumn = 'closestBehavCamFrameIdx';
 end
 
+if ~exist('xPositionColumn', 'var') || isempty(xPositionColumn)
+    xPositionColumn = 'X_coor';
+end
+
 if ~exist('runTimestamp', 'var') || isempty(runTimestamp)
     runTimestamp = datestr(now, 'yyyymmdd_HHMMSS');
 end
 
-disp('loading');
-disp(alignedFile);
-dataTable = readtable(alignedFile, 'VariableNamingRule', 'preserve');
+[inputDir, inputBase, ~] = fileparts(alignedFile);
+if ~exist('metadataFile', 'var') || isempty(metadataFile)
+    metadataFile = fullfile(inputDir, 'GCAMP_with_velocity.csv');
+end
 
-variableNames = dataTable.Properties.VariableNames;
-cellColumns = variableNames(startsWith(variableNames, 'cell_'));
+disp('loading event-rate input');
+disp(alignedFile);
+eventRateTable = readtable(alignedFile, 'VariableNamingRule', 'preserve');
+
+eventRateVariableNames = eventRateTable.Properties.VariableNames;
+cellColumns = eventRateVariableNames(startsWith(eventRateVariableNames, 'cell_'));
 
 if isempty(cellColumns)
     error('No cell_* columns were found in %s.', alignedFile);
 end
 
-requiredColumns = {sessionIdColumn, 'X_coor', 'Y_coor'};
+requiredColumns = {sessionIdColumn, xPositionColumn};
+hasEmbeddedMetadata = all(ismember(requiredColumns, eventRateVariableNames));
+
+if hasEmbeddedMetadata
+    dataTable = eventRateTable;
+else
+    if ~isfile(metadataFile)
+        error(['Event-rate input %s does not include %s/%s, and companion metadata file ' ...
+            '%s was not found.'], alignedFile, sessionIdColumn, xPositionColumn, metadataFile);
+    end
+
+    disp('loading companion metadata');
+    disp(metadataFile);
+    metadataTable = readtable(metadataFile, 'VariableNamingRule', 'preserve');
+
+    if height(eventRateTable) ~= height(metadataTable)
+        error(['Row count mismatch between event-rate input (%d rows) and metadata file (%d rows). ' ...
+            'These files must align frame-by-frame.'], height(eventRateTable), height(metadataTable));
+    end
+
+    metadataVariableNames = metadataTable.Properties.VariableNames;
+    for colIdx = 1:numel(requiredColumns)
+        if ~ismember(requiredColumns{colIdx}, metadataVariableNames)
+            error('Required metadata column "%s" was not found in %s.', requiredColumns{colIdx}, metadataFile);
+        end
+    end
+
+    metadataKeepMask = ~startsWith(metadataVariableNames, 'cell_');
+    dataTable = [metadataTable(:, metadataKeepMask), eventRateTable(:, cellColumns)];
+end
+
+variableNames = dataTable.Properties.VariableNames;
 for colIdx = 1:numel(requiredColumns)
     if ~ismember(requiredColumns{colIdx}, variableNames)
-        error('Required column "%s" was not found in %s.', requiredColumns{colIdx}, alignedFile);
+        error('Required column "%s" was not found after preparing %s.', requiredColumns{colIdx}, alignedFile);
     end
 end
 
@@ -90,8 +128,7 @@ if ~all(validRows)
     sessionIds = sessionIds(validRows);
 end
 
-[inputDir, inputBase, ~] = fileparts(alignedFile);
-outputDir = fullfile(inputDir, [inputBase '_placeCellAnalysis_multDays_onTheFlyMI_' runTimestamp]);
+outputDir = fullfile(inputDir, [inputBase '_placeCellAnalysis_multDays_eventRateInput_' runTimestamp]);
 splitDir = fullfile(outputDir, 'splitSessions');
 
 if ~isfolder(outputDir)
@@ -116,13 +153,12 @@ manifest = table( ...
     'VariableNames', {'sessionIndex', 'sessionSource', 'numRows', 'sessionStem', 'splitCsv', 'status', 'message'});
 
 opts = struct();
-opts.samplingRateHz = samplingRateHz;
 opts.numShuffles = numShuffles;
 opts.numBins = numBins;
 opts.binsubset = binsubset;
 opts.maxChunkElements = maxChunkElements;
 opts.maxShufflesPerWrite = maxShufflesPerWrite;
-opts.numStdsForThresh = 2.5;
+opts.xPositionColumn = xPositionColumn;
 
 for sessionIdx = 1:numSessions
     sessionSource = sessionSources(sessionIdx);
@@ -166,15 +202,14 @@ end
 manifestPath = fullfile(outputDir, [inputBase '__run' runTimestamp '_session_manifest.csv']);
 writetable(manifest, manifestPath);
 
-disp('multi-session place cell analysis completed');
+disp('multi-session event-rate place cell analysis completed');
 disp(outputDir);
 
 function analyzeSingleSession(sessionTable, cellColumns, outputDir, outputStem, opts)
-    cellTracesArray = table2array(sessionTable(:, cellColumns));
-    x_position = sessionTable.X_coor;
-    y_position = sessionTable.Y_coor;
+    eventRateArray = table2array(sessionTable(:, cellColumns));
+    x_position = sessionTable.(opts.xPositionColumn);
 
-    [numFrames, numNeurons] = size(cellTracesArray);
+    [numFrames, numNeurons] = size(eventRateArray);
     if numFrames < 2
         error('Session %s has fewer than 2 frames.', outputStem);
     end
@@ -183,38 +218,22 @@ function analyzeSingleSession(sessionTable, cellColumns, outputDir, outputStem, 
         error('Session %s has no cell columns.', outputStem);
     end
 
-    finiteX = x_position(isfinite(x_position));
-    finiteY = y_position(isfinite(y_position));
-
-    if numel(finiteX) < 2
-        error('Session %s does not contain enough finite X_coor values.', outputStem);
+    invalidEventRateMask = ~isfinite(eventRateArray);
+    if any(invalidEventRateMask, 'all')
+        warning('Session %s contains %d non-finite event-rate values; replacing them with 0.', ...
+            outputStem, nnz(invalidEventRateMask));
+        eventRateArray(invalidEventRateMask) = 0;
     end
 
-    if numel(finiteY) < 2
-        error('Session %s does not contain enough finite Y_coor values.', outputStem);
+    finiteX = x_position(isfinite(x_position));
+    if numel(finiteX) < 2
+        error('Session %s does not contain enough finite %s values.', outputStem, opts.xPositionColumn);
     end
 
     if min(finiteX) == max(finiteX)
-        error('Session %s has no X_coor range for spatial binning.', outputStem);
+        error('Session %s has no %s range for spatial binning.', outputStem, opts.xPositionColumn);
     end
 
-    % Retain a 1-second window on the 20 Hz miniscope-aligned rows used in the notebook.
-    window_size = max(1, min(numFrames, round(opts.samplingRateHz)));
-
-    %% calculate 2d velocity
-    time = (0:numFrames-1)' ./ opts.samplingRateHz;
-    dt = diff(time);
-    x_velocity = [NaN; diff(x_position) ./ dt];
-    y_velocity = [NaN; diff(y_position) ./ dt];
-    velocity_2d = sqrt(x_velocity.^2 + y_velocity.^2); %#ok<NASGU>
-
-    %% calculate spike rate using 1 second sliding window
-    signalPeaks = computeSignalPeaks(cellTracesArray', 'doMovAvg', 0, 'reportMidpoint', 1, 'numStdsForThresh', opts.numStdsForThresh)';
-    spikes = signalPeaks;
-    window = ones(window_size, 1);
-    event_rate = conv2(spikes, window, 'same') / window_size;
-
-    %% compute mutual information
     bin_edges = linspace(min(finiteX), max(finiteX), opts.numBins + 1);
     [counts, ~] = histcounts(x_position, bin_edges);
     if sum(counts) == 0
@@ -222,9 +241,8 @@ function analyzeSingleSession(sessionTable, cellColumns, outputDir, outputStem, 
     end
     probabilityOfMouseOccupyingBin = counts / sum(counts);
 
-    cellFiringProbabilityPerBin = calculateFiringProbability(event_rate, x_position, bin_edges);
+    cellFiringProbabilityPerBin = calculateFiringProbability(eventRateArray, x_position, bin_edges);
 
-    %% top firing bins
     numTopBins = min(5, size(cellFiringProbabilityPerBin, 2));
     topBins = zeros(numNeurons, numTopBins);
     for neuron = 1:numNeurons
@@ -237,8 +255,7 @@ function analyzeSingleSession(sessionTable, cellColumns, outputDir, outputStem, 
     h5create(topBinsPath, '/topBins', size(topBins), 'Datatype', 'double');
     h5write(topBinsPath, '/topBins', topBins);
 
-    %% actual mutual information outputs
-    neuronFiringProbability = mean(signalPeaks, 1);
+    neuronFiringProbability = mean(eventRateArray ~= 0, 1);
     [MI_perCell, MI_perCellperBin] = calculateMutualInformation( ...
         cellFiringProbabilityPerBin, neuronFiringProbability, probabilityOfMouseOccupyingBin);
 
@@ -264,7 +281,6 @@ function analyzeSingleSession(sessionTable, cellColumns, outputDir, outputStem, 
     h5write(actualMiPath, '/MI_perCellperBin', MI_perCellperBin);
     h5write(actualMiPath, '/binOccupancyProbability', probabilityOfMouseOccupyingBin);
 
-    %% calculate shuffled mutual information directly in chunks
     numCells = size(cellFiringProbabilityPerBin, 1);
     numBins = size(cellFiringProbabilityPerBin, 2);
     chunkSize = max(1, floor(opts.maxChunkElements / max(1, numCells * numBins)));
@@ -288,17 +304,9 @@ function analyzeSingleSession(sessionTable, cellColumns, outputDir, outputStem, 
             shuffle = startShuffle + shuffleIdx - 1;
             disp(['Shuffle ' num2str(shuffle) ' for ' outputStem]);
 
-            shuffledCellTraces = cellTracesArray;
-            for neuron = 1:numNeurons
-                shuffleIndices = randperm(numFrames);
-                shuffledCellTraces(:, neuron) = cellTracesArray(shuffleIndices, neuron);
-            end
-
-            signalPeaksThisShuffle = computeSignalPeaks(shuffledCellTraces', 'doMovAvg', 0, ...
-                'reportMidpoint', 1, 'numStdsForThresh', opts.numStdsForThresh)';
-            event_rateThisShuffle = conv2(signalPeaksThisShuffle, window, 'same') / window_size;
-            cellFiringProbabilityPerBinThisShuffle = calculateFiringProbability(event_rateThisShuffle, x_position, bin_edges);
-            neuronFiringProbabilityThisShuffle = mean(signalPeaksThisShuffle, 1);
+            shuffledEventRate = shuffleNeuronFrames(eventRateArray, numFrames, numNeurons);
+            cellFiringProbabilityPerBinThisShuffle = calculateFiringProbability(shuffledEventRate, x_position, bin_edges);
+            neuronFiringProbabilityThisShuffle = mean(shuffledEventRate ~= 0, 1);
 
             [MI_perCellThisShuffle, MI_perCellperBinThisShuffle] = calculateMutualInformation( ...
                 cellFiringProbabilityPerBinThisShuffle, neuronFiringProbabilityThisShuffle, probabilityOfMouseOccupyingBin);
@@ -311,6 +319,14 @@ function analyzeSingleSession(sessionTable, cellColumns, outputDir, outputStem, 
             [1, startShuffle], [numCells, currentChunkSize]);
         h5write(miResultsPath, '/MI_perCellperBinAllShuffles', MI_perCellperBinAllShufflesChunk, ...
             [1, 1, startShuffle], [numCells, numBins, currentChunkSize]);
+    end
+end
+
+function shuffledMatrix = shuffleNeuronFrames(eventRateArray, numFrames, numNeurons)
+    shuffledMatrix = eventRateArray;
+    for neuron = 1:numNeurons
+        shuffleIndices = randperm(numFrames);
+        shuffledMatrix(:, neuron) = eventRateArray(shuffleIndices, neuron);
     end
 end
 

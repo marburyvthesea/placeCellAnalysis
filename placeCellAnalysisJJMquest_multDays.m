@@ -11,6 +11,7 @@
 %   writeSplitSessionTables = whether to write one CSV per session (default: true)
 %   sessionIdColumn = column used to split sessions (default: 'ezTrackOutput')
 %   frameColumn = column used to sort rows within session (default: 'closestBehavCamFrameIdx')
+%   runTimestamp = output timestamp override (default: datestr(now, 'yyyymmdd_HHMMSS'))
 
 if ~exist('alignedFile', 'var') || isempty(alignedFile)
     error('Set alignedFile to the combined GCAMP CSV path before running this script.');
@@ -48,6 +49,10 @@ if ~exist('frameColumn', 'var') || isempty(frameColumn)
     frameColumn = 'closestBehavCamFrameIdx';
 end
 
+if ~exist('runTimestamp', 'var') || isempty(runTimestamp)
+    runTimestamp = datestr(now, 'yyyymmdd_HHMMSS');
+end
+
 disp('loading');
 disp(alignedFile);
 dataTable = readtable(alignedFile, 'VariableNamingRule', 'preserve');
@@ -76,7 +81,7 @@ if ~all(validRows)
 end
 
 [inputDir, inputBase, ~] = fileparts(alignedFile);
-outputDir = fullfile(inputDir, [inputBase '_placeCellAnalysis_multDays']);
+outputDir = fullfile(inputDir, [inputBase '_placeCellAnalysis_multDays_' runTimestamp]);
 splitDir = fullfile(outputDir, 'splitSessions');
 
 if ~isfolder(outputDir)
@@ -117,7 +122,7 @@ for sessionIdx = 1:numSessions
         sessionTable = sortrows(sessionTable, frameColumn);
     end
 
-    sessionStem = buildSessionStem(inputBase, sessionIdx, sessionSource);
+    sessionStem = buildSessionStem(inputBase, sessionIdx, sessionSource, runTimestamp);
     splitCsvPath = "";
 
     manifest.sessionIndex(sessionIdx) = sessionIdx;
@@ -147,7 +152,7 @@ for sessionIdx = 1:numSessions
     end
 end
 
-manifestPath = fullfile(outputDir, [inputBase '_session_manifest.csv']);
+manifestPath = fullfile(outputDir, [inputBase '__run' runTimestamp '_session_manifest.csv']);
 writetable(manifest, manifestPath);
 
 disp('multi-session place cell analysis completed');
@@ -329,7 +334,7 @@ function recreateH5(h5FilePath)
     end
 end
 
-function sessionStem = buildSessionStem(inputBase, sessionIdx, sessionSource)
+function sessionStem = buildSessionStem(inputBase, sessionIdx, sessionSource, runTimestamp)
     [~, sessionBase, ~] = fileparts(char(sessionSource));
     if isempty(sessionBase)
         sessionBase = ['session_' num2str(sessionIdx)];
@@ -349,5 +354,5 @@ function sessionStem = buildSessionStem(inputBase, sessionIdx, sessionSource)
         sanitizedSessionBase = char(sanitizedSessionBase);
     end
 
-    sessionStem = sprintf('%s__session%02d__%s', inputBase, sessionIdx, sanitizedSessionBase);
+    sessionStem = sprintf('%s__run%s__session%02d__%s', inputBase, runTimestamp, sessionIdx, sanitizedSessionBase);
 end

@@ -42,7 +42,7 @@ function placeCellAnalysisJJMquest_multDays_savedShuffles(alignedFile, config)
     end
 
     [inputDir, inputBase, ~] = fileparts(alignedFile);
-    outputDir = fullfile(inputDir, [inputBase opts.outputSuffix]);
+    outputDir = fullfile(inputDir, [inputBase opts.outputSuffix '_' opts.runTimestamp]);
     splitDir = fullfile(outputDir, 'splitSessions');
 
     if ~isfolder(outputDir)
@@ -75,7 +75,7 @@ function placeCellAnalysisJJMquest_multDays_savedShuffles(alignedFile, config)
             sessionTable = sortrows(sessionTable, opts.frameColumn);
         end
 
-        sessionStem = buildSessionStem(inputBase, sessionIdx, sessionSource);
+        sessionStem = buildSessionStem(inputBase, sessionIdx, sessionSource, opts.runTimestamp);
         splitCsvPath = "";
 
         manifest.sessionIndex(sessionIdx) = sessionIdx;
@@ -105,7 +105,7 @@ function placeCellAnalysisJJMquest_multDays_savedShuffles(alignedFile, config)
         end
     end
 
-    manifestPath = fullfile(outputDir, [inputBase '_session_manifest.csv']);
+    manifestPath = fullfile(outputDir, [inputBase '__run' opts.runTimestamp '_session_manifest.csv']);
     writetable(manifest, manifestPath);
 
     disp('multi-session place cell analysis completed');
@@ -156,6 +156,9 @@ function opts = applyDefaults(config)
     end
     if ~isfield(opts, 'outputSuffix') || isempty(opts.outputSuffix)
         error('config.outputSuffix is required.');
+    end
+    if ~isfield(opts, 'runTimestamp') || isempty(opts.runTimestamp)
+        opts.runTimestamp = datestr(now, 'yyyymmdd_HHMMSS');
     end
 end
 
@@ -452,7 +455,7 @@ function recreateH5(h5FilePath)
     end
 end
 
-function sessionStem = buildSessionStem(inputBase, sessionIdx, sessionSource)
+function sessionStem = buildSessionStem(inputBase, sessionIdx, sessionSource, runTimestamp)
     [~, sessionBase, ~] = fileparts(char(sessionSource));
     if isempty(sessionBase)
         sessionBase = ['session_' num2str(sessionIdx)];
@@ -472,5 +475,5 @@ function sessionStem = buildSessionStem(inputBase, sessionIdx, sessionSource)
         sanitizedSessionBase = char(sanitizedSessionBase);
     end
 
-    sessionStem = sprintf('%s__session%02d__%s', inputBase, sessionIdx, sanitizedSessionBase);
+    sessionStem = sprintf('%s__run%s__session%02d__%s', inputBase, runTimestamp, sessionIdx, sanitizedSessionBase);
 end

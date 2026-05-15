@@ -56,9 +56,11 @@ event_rate = conv2(spikes, window, 'same') / window_size;
 % by length: bin track into 4 pixel bins
 %bin_edges = 0:4:max(x_position)+4;
 
-% by number: calculate the bin edges for 32 equal-length bins (should be ~4
-% cm based on cropping)
-numBins = 32;
+% by number: calculate the bin edges for equal-length bins (default 32,
+% should be ~4 cm based on cropping)
+if ~exist('numBins', 'var') || isempty(numBins)
+    numBins = 32;
+end
 bin_edges = linspace(min(x_position), max(x_position), numBins + 1);
 
 % Compute histogram counts and bin edges
@@ -298,7 +300,6 @@ for startShuffle = 1:chunkSize:numShuffles
 end
 
 disp('Mutual information calculations and storage completed.');
-
 
 
 
