@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -A p30771
-#SBATCH -p normal
-#SBATCH -t 48:00:00
+#SBATCH -p short
+#SBATCH -t 04:00:00
 #SBATCH -o ./logfiles/placeCellAnalysis.%x-%j.out # STDOUT
 #SBATCH --job-name="placeCellAnalysisMultiDaysEventRateInput"
 #SBATCH --mem=25G
