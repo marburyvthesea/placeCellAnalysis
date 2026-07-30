@@ -99,6 +99,33 @@ def _smooth_trace_centered(trace_1d: np.ndarray, window_samples: Optional[int]) 
     )
 
 
+def _iter_with_optional_progress(
+    iterable,
+    *,
+    show_progress: bool = False,
+    total: Optional[int] = None,
+    desc: Optional[str] = None,
+    unit: str = "item",
+    leave: bool = True,
+):
+    if not show_progress:
+        return iterable
+
+    try:
+        from tqdm.auto import tqdm
+    except ImportError:
+        return iterable
+
+    return tqdm(
+        iterable,
+        total=total,
+        desc=desc,
+        unit=unit,
+        leave=leave,
+        dynamic_ncols=True,
+    )
+
+
 def compute_component_centroids(spatial_3d: np.ndarray, cell_indices: np.ndarray) -> np.ndarray:
     spatial_3d = np.asarray(spatial_3d, dtype=np.float32)
     if spatial_3d.ndim != 3:
@@ -297,6 +324,7 @@ def build_event_start_matrix(
     strict_onset_window_len_frames: int = 3,
     strict_offset_tol: float = 0.25,
     strict_offset_window_len_frames: int = 3,
+    show_progress: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     traces_2d = np.asarray(traces_2d, dtype=np.float32)
     if traces_2d.ndim != 2:
@@ -306,7 +334,15 @@ def build_event_start_matrix(
     n_frames, n_cells = work_traces.shape
     event_start_matrix = np.zeros((n_frames, n_cells), dtype=np.uint8)
 
-    for cell_idx in range(n_cells):
+    cell_indices = _iter_with_optional_progress(
+        range(n_cells),
+        show_progress=show_progress,
+        total=n_cells,
+        desc="Detecting cell events",
+        unit="cell",
+        leave=True,
+    )
+    for cell_idx in cell_indices:
         if event_detection_method == "strict_peak_stats":
             strict_events = detect_strict_peak_stats_events_from_z_trace(
                 work_traces[:, cell_idx],
@@ -403,6 +439,7 @@ def find_representative_cells_and_regions_by_frequency(
     top_k_cells_per_region: int = 4,
     labels_are_one_based: bool = True,
     cell_id_col: Optional[str] = None,
+    show_progress: bool = False,
 ) -> FrequencySelectionResult:
     traces_2d = np.asarray(traces_2d, dtype=np.float32)
     if traces_2d.ndim != 2:
@@ -439,6 +476,7 @@ def find_representative_cells_and_regions_by_frequency(
         strict_onset_window_len_frames=strict_onset_window_len_frames,
         strict_offset_tol=strict_offset_tol,
         strict_offset_window_len_frames=strict_offset_window_len_frames,
+        show_progress=show_progress,
     )
 
     window_starts, cell_window_event_hz = compute_windowed_event_frequency(
@@ -468,10 +506,21 @@ def find_representative_cells_and_regions_by_frequency(
     cell_summary = cell_summary.sort_values(["best_abs_error_hz", "best_event_hz"]).reset_index(drop=True)
 
     region_records: list[dict[str, object]] = []
-    for region_id, region_cells in cell_table.groupby("region_id", sort=False):
-        if region_id == "unassigned" or len(region_cells) < min_cells_per_region:
-            continue
-
+    grouped_regions = list(cell_table.groupby("region_id", sort=False))
+    grouped_regions = [
+        (region_id, region_cells)
+        for region_id, region_cells in grouped_regions
+        if region_id != "unassigned" and len(region_cells) >= min_cells_per_region
+    ]
+    grouped_regions_iter = _iter_with_optional_progress(
+        grouped_regions,
+        show_progress=show_progress,
+        total=len(grouped_regions),
+        desc="Scoring spatial regions",
+        unit="region",
+        leave=False,
+    )
+    for region_id, region_cells in grouped_regions_iter:
         region_local_indices = region_cells.index.to_numpy(dtype=int)
         region_window_hz = cell_window_event_hz[:, region_local_indices]
         region_mean_hz = np.nanmean(region_window_hz, axis=1)
@@ -508,7 +557,16 @@ def find_representative_cells_and_regions_by_frequency(
     region_matches = region_matches.head(top_k_regions).copy()
 
     cell_match_records: list[dict[str, object]] = []
-    for _, region_row in region_matches.iterrows():
+    region_match_rows = list(region_matches.iterrows())
+    region_match_rows_iter = _iter_with_optional_progress(
+        region_match_rows,
+        show_progress=show_progress,
+        total=len(region_match_rows),
+        desc="Selecting representative cells",
+        unit="region",
+        leave=False,
+    )
+    for _, region_row in region_match_rows_iter:
         region_id = str(region_row["region_id"])
         window_index = int(region_row["window_index"])
         region_cells = cell_table[cell_table["region_id"] == region_id].copy()
